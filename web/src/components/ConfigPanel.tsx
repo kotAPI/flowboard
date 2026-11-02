@@ -1,7 +1,11 @@
+import Button from "@radui/ui/Button";
+import Callout from "@radui/ui/Callout";
+import TextField from "@radui/ui/TextField";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ApiError, containerPath, del, get, patch, post } from "../api";
 import { findNode, keys, useTree } from "../hooks";
+import { Check, Picker } from "./ui";
 import { CATEGORIES, FIELD_TYPES, type FieldDef, type FieldType, type ResolvedField, type ResolvedStatus, type StatusCategory, type StatusDef, type TreeNode } from "../types";
 
 /**
@@ -105,24 +109,24 @@ function StatusConfig({ base, nodeId }: { base: string; nodeId: string }) {
         <p className="muted small">
           Hidden here:{" "}
           {hidden.map((d) => (
-            <button key={d.id} className="link" onClick={() => attempt(() => del(`/v1/statuses/${d.id}`))}>{d.key} (unhide)</button>
+            <Button key={d.id} variant="ghost" size="small" onClick={() => attempt(() => del(`/v1/statuses/${d.id}`))}>{d.key} (unhide)</Button>
           ))}
         </p>
       )}
       <AddStatus onAdd={(body) => attempt(() => post(`${base}/statuses`, body))} />
       {pending && (
-        <div className="callout" role="alert">
-          <p><strong>Tasks still use this status.</strong> {pending.err.body.details?.map((d) => d.message).join("; ")}</p>
-          <label>
-            Move those tasks to{" "}
-            <select aria-label="Remap tasks to" value={remapTo} onChange={(e) => setRemapTo(e.target.value)}>
-              <option value="">choose…</option>
-              {resolved.filter((s) => !pending.err.body.details?.some((d) => d.statusKey === s.key)).map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
-            </select>
-          </label>{" "}
-          <button className="btn primary" disabled={!remapTo} onClick={() => run.mutate({ fn: pending.run, remapTo })}>Apply and move tasks</button>{" "}
-          <button className="btn ghost" onClick={() => setPending(null)}>Cancel</button>
-        </div>
+        <Callout.Root color="amber" role="alert" className="remap">
+          <Callout.Text>
+            <strong>Tasks still use this status.</strong> {pending.err.body.details?.map((d) => d.message).join("; ")}
+          </Callout.Text>
+          <div className="add-row">
+            <span>Move those tasks to</span>
+            <Picker label="Remap tasks to" value={remapTo} onChange={setRemapTo}
+              options={resolved.filter((s) => !pending.err.body.details?.some((d) => d.statusKey === s.key)).map((s) => ({ value: s.key, label: s.name, swatch: s.color }))} />
+            <Button disabled={!remapTo} onClick={() => run.mutate({ fn: pending.run, remapTo })}>Apply and move tasks</Button>
+            <Button variant="ghost" onClick={() => setPending(null)}>Cancel</Button>
+          </div>
+        </Callout.Root>
       )}
       {error && <ErrorBox error={error} />}
     </section>
@@ -141,14 +145,14 @@ function StatusRow({ status, source, local, canUp, canDown, onMove, onSave, onHi
   return (
     <tr>
       <td className="order">
-        <button className="icon-btn" aria-label={`Move ${status.name} up`} disabled={!canUp} onClick={() => onMove(-1)}>↑</button>
-        <button className="icon-btn" aria-label={`Move ${status.name} down`} disabled={!canDown} onClick={() => onMove(1)}>↓</button>
+        <Button variant="ghost" size="small" className="icon-btn" aria-label={`Move ${status.name} up`} disabled={!canUp} onClick={() => onMove(-1)}>↑</Button>
+        <Button variant="ghost" size="small" className="icon-btn" aria-label={`Move ${status.name} down`} disabled={!canDown} onClick={() => onMove(1)}>↓</Button>
       </td>
       <td>
         {editing ? (
           <span className="inline-edit">
             <input type="color" aria-label="Colour" value={color} onChange={(e) => setColor(e.target.value)} />
-            <input aria-label="Status name" value={name} onChange={(e) => setName(e.target.value)} />
+            <TextField aria-label="Status name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
           </span>
         ) : (
           <span className="pill" style={{ "--c": status.color } as React.CSSProperties}><span className="dot" />{status.name}</span>
@@ -157,23 +161,21 @@ function StatusRow({ status, source, local, canUp, canDown, onMove, onSave, onHi
       <td><code>{status.key}</code></td>
       <td>
         {editing ? (
-          <select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value as StatusCategory)}>
-            {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
+          <Picker label="Category" value={category} onChange={(v) => setCategory(v as StatusCategory)} options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
         ) : status.category}
       </td>
       <td className="muted small">{source}</td>
       <td className="actions">
         {editing ? (
           <>
-            <button className="btn primary small" onClick={() => { onSave({ name, color, category }); setEditing(false); }}>Save</button>
-            <button className="btn ghost small" onClick={() => setEditing(false)}>Cancel</button>
+            <Button size="small" onClick={() => { onSave({ name, color, category }); setEditing(false); }}>Save</Button>
+            <Button variant="ghost" size="small" onClick={() => setEditing(false)}>Cancel</Button>
           </>
         ) : (
           <>
-            <button className="btn ghost small" onClick={() => setEditing(true)}>{local ? "Edit" : "Override"}</button>
-            {status.inherited && !local && <button className="btn ghost small" onClick={onHide}>Hide</button>}
-            {onRemove && <button className="btn ghost small" onClick={onRemove}>{removeLabel}</button>}
+            <Button variant="ghost" size="small" onClick={() => setEditing(true)}>{local ? "Edit" : "Override"}</Button>
+            {status.inherited && !local && <Button variant="ghost" size="small" onClick={onHide}>Hide</Button>}
+            {onRemove && <Button variant="ghost" size="small" onClick={onRemove}>{removeLabel}</Button>}
           </>
         )}
       </td>
@@ -189,12 +191,10 @@ function AddStatus({ onAdd }: { onAdd: (body: { key: string; name: string; categ
   return (
     <form className="add-row" onSubmit={(e) => { e.preventDefault(); if (key) { onAdd({ key, name, category, color }); setName(""); } }}>
       <input type="color" aria-label="New status colour" value={color} onChange={(e) => setColor(e.target.value)} />
-      <input aria-label="New status name" placeholder="New status name" value={name} onChange={(e) => setName(e.target.value)} />
-      <select aria-label="New status category" value={category} onChange={(e) => setCategory(e.target.value as StatusCategory)}>
-        {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-      </select>
+      <TextField aria-label="New status name" placeholder="New status name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
+      <Picker label="New status category" value={category} onChange={(v) => setCategory(v as StatusCategory)} options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
       {key && <code className="muted small">{key}</code>}
-      <button className="btn" disabled={!key}>Add status</button>
+      <Button type="submit" variant="soft" disabled={!key}>Add status</Button>
     </form>
   );
 }
@@ -226,14 +226,14 @@ function FieldConfig({ base, nodeId }: { base: string; nodeId: string }) {
               <td><code>{f.key}</code></td>
               <td>{f.type}</td>
               <td>
-                <input type="checkbox" aria-label={`${f.name} required`} checked={f.required} disabled={f.inherited}
-                  onChange={(e) => run.mutate(() => patch(`/v1/fields/${f.id}`, { required: e.target.checked }))} />
+                <Check label={`${f.name} required`} checked={f.required} disabled={f.inherited}
+                  onChange={(on) => run.mutate(() => patch(`/v1/fields/${f.id}`, { required: on }))} />
               </td>
               <td className="small">{f.options.map((o) => o.label).join(", ")}</td>
               <td className="muted small">{f.inherited ? `inherited from ${ownerName(f.ownerId)}` : "defined here"}</td>
               <td className="actions">
                 {!f.inherited && (
-                  <button className="btn ghost small" onClick={() => run.mutate(() => del(`/v1/fields/${f.id}`))}>Delete</button>
+                  <Button variant="ghost" size="small" color="red" onClick={() => run.mutate(() => del(`/v1/fields/${f.id}`))}>Delete</Button>
                 )}
               </td>
             </tr>
@@ -262,23 +262,21 @@ function AddField({ onAdd }: { onAdd: (body: { key: string; name: string; type: 
       onAdd({ key, name, type, required, ...(isSelect ? { options: options.split(",").map((s) => s.trim()).filter(Boolean).map((label) => ({ label })) } : {}) });
       setName(""); setOptions("");
     }}>
-      <input aria-label="New field name" placeholder="New field name" value={name} onChange={(e) => setName(e.target.value)} />
-      <select aria-label="New field type" value={type} onChange={(e) => setType(e.target.value as FieldType)}>
-        {FIELD_TYPES.map((t) => <option key={t}>{t}</option>)}
-      </select>
-      {isSelect && <input aria-label="Options" placeholder="Options, comma separated" value={options} onChange={(e) => setOptions(e.target.value)} />}
-      <label className="small"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /> required</label>
-      <button className="btn" disabled={!key}>Add field</button>
+      <TextField aria-label="New field name" placeholder="New field name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
+      <Picker label="New field type" value={type} onChange={(v) => setType(v as FieldType)} options={FIELD_TYPES.map((t) => ({ value: t, label: t }))} />
+      {isSelect && <TextField aria-label="Options" placeholder="Options, comma separated" value={options} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOptions(e.target.value)} />}
+      <Check checked={required} onChange={setRequired}>required</Check>
+      <Button type="submit" variant="soft" disabled={!key}>Add field</Button>
     </form>
   );
 }
 
 function ErrorBox({ error }: { error: ApiError }) {
   return (
-    <div className="error" role="alert">
-      <strong>{error.message}</strong>
-      {error.body.details && <ul>{error.body.details.map((d, i) => <li key={i}>{d.path ? <code>{d.path}</code> : null} {d.message}</li>)}</ul>}
-    </div>
+    <Callout.Root color="red" role="alert">
+      <Callout.Text><strong>{error.message}</strong></Callout.Text>
+      {error.body.details && <ul className="error-list">{error.body.details.map((d, i) => <li key={i}>{d.path ? <code>{d.path}</code> : null} {d.message}</li>)}</ul>}
+    </Callout.Root>
   );
 }
 

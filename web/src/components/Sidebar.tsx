@@ -1,3 +1,4 @@
+import Button from "@radui/ui/Button";
 import { useState } from "react";
 import type { Route } from "../route";
 import type { TreeNode } from "../types";
@@ -30,9 +31,9 @@ function TreeItem({ node, depth, activeId, isAdmin }: { node: TreeNode; depth: n
     <li role="treeitem" aria-expanded={isList ? undefined : open} aria-selected={activeId === node.id}>
       <div className={`tree-row ${activeId === node.id ? "active" : ""}`} style={{ paddingLeft: 8 + depth * 14 }}>
         {!isList ? (
-          <button className="twisty" aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`} onClick={() => setOpen(!open)}>
+          <Button variant="ghost" size="small" className="twisty icon-btn" aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`} onClick={() => setOpen(!open)}>
             {open ? "▾" : "▸"}
-          </button>
+          </Button>
         ) : (
           <span className="twisty" />
         )}

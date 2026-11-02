@@ -1,3 +1,5 @@
+import Button from "@radui/ui/Button";
+import Tabs from "@radui/ui/Tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { currentUserId, setCurrentUserId } from "./api";
@@ -6,6 +8,7 @@ import { ConfigPanel } from "./components/ConfigPanel";
 import { Sidebar } from "./components/Sidebar";
 import { TableView } from "./components/TableView";
 import { TaskDrawer } from "./components/TaskDrawer";
+import { ButtonLink, Picker } from "./components/ui";
 import { findNode, useBoard, useMe, useTree, useUsers } from "./hooks";
 import { useRoute } from "./route";
 
@@ -29,16 +32,15 @@ export function App() {
         <a className="brand" href="#/">Flowboard</a>
         <span className="muted">{tree.data?.name}</span>
         <div className="spacer" />
-        <label className="user-switch">
+        <div className="user-switch">
           <span className="muted">Acting as</span>
-          <select aria-label="Acting user" value={userId} onChange={(e) => switchUser(e.target.value)}>
-            {(users.data ?? [{ id: "usr_alice", name: "Alice", role: "admin" }]).map((u) => (
-              <option key={u.id} value={u.id.replace("usr_", "")}>
-                {u.name} ({u.role})
-              </option>
-            ))}
-          </select>
-        </label>
+          <Picker
+            label="Acting user"
+            value={userId}
+            onChange={switchUser}
+            options={(users.data ?? [{ id: "usr_alice", name: "Alice", role: "admin" }]).map((u) => ({ value: u.id.replace("usr_", ""), label: `${u.name} (${u.role})` }))}
+          />
+        </div>
       </header>
       <Sidebar tree={tree.data} loading={tree.isLoading} route={route} isAdmin={me.data?.role === "admin"} />
       <main className="main">
@@ -82,13 +84,15 @@ function ListPage({ listId, view, onView, isAdmin }: { listId: string; view: "bo
     <div className="list-page">
       <div className="list-header">
         <h1>{data.list.name}</h1>
-        <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={view === "board"} onClick={() => onView("board")}>Board</button>
-          <button role="tab" aria-selected={view === "table"} onClick={() => onView("table")}>List</button>
-        </div>
+        <Tabs.Root value={view} onValueChange={(v) => onView(v as "board" | "table")}>
+          <Tabs.List aria-label="View">
+            <Tabs.Trigger value="board">Board</Tabs.Trigger>
+            <Tabs.Trigger value="table">List</Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
         <div className="spacer" />
-        {isAdmin && <a className="btn ghost" href={`#/config/${listId}`}>Statuses &amp; fields</a>}
-        <button className="btn primary" onClick={() => { setNewStatus(undefined); setOpenTask("new"); }}>New task</button>
+        {isAdmin && <ButtonLink variant="ghost" href={`#/config/${listId}`}>Statuses &amp; fields</ButtonLink>}
+        <Button onClick={() => { setNewStatus(undefined); setOpenTask("new"); }}>New task</Button>
       </div>
       {view === "board" ? (
         <BoardView board={data} onOpen={setOpenTask} onAdd={(statusKey) => { setNewStatus(statusKey); setOpenTask("new"); }} />

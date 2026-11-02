@@ -35,6 +35,7 @@ These all happened while building this repo:
 | Config UI remap flow | The "tasks still use this status" handler caught the error and returned normally, so the mutation's `onSuccess` ran and immediately cleared the remap prompt it had just opened. | Moved the handling into `onError` and carried the retry function through the mutation variables. |
 | Docker healthcheck `wget http://localhost:3000/health` | `localhost` resolves to IPv6 in Alpine while the server listened on IPv4, so the API showed as unhealthy and the stack wouldn't start. | Used `127.0.0.1`. |
 | `const id = z.string()` schema plus destructured `const { id }` in handlers | A TypeScript shadowing error ("used before its declaration"). | Renamed the schema to `idSchema`. |
+| UI first built on plain HTML controls and hand-written CSS | I build Rad UI, so the UI should use it. | Moved buttons, inputs, selects, checkboxes, tabs, the task drawer, badges, avatars, callouts and tables to Rad UI 1.1.4. That surfaced a Rad UI gap I filed upstream ([rad-ui/ui#2292](https://github.com/rad-ui/ui/issues/2292): inactive tab triggers depend on a host CSS reset) with a local workaround. The user-switch test moved from `selectOptions` to the Select's combobox/listbox roles. |
 | Frontend test: second test found two apps rendered | Testing Library's auto-cleanup needs Vitest globals, which this setup doesn't enable. | Called `cleanup()` explicitly in `afterEach`. |
 
 ## What I rejected or kept out

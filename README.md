@@ -2,7 +2,7 @@
 
 A small project-management app (a mini ClickUp) for one workspace. It has a workspace → space → folder → list tree, tasks with typed custom fields, statuses that can differ per space, folder or list through inheritance, a kanban board and a list view, and allow/deny permissions.
 
-**Stack:** Node 22 + TypeScript (Fastify, Zod, `pg`) · PostgreSQL 16 · React 19 + Vite (TanStack Query, dnd-kit) · an outbox worker · Docker Compose.
+**Stack:** Node 22 + TypeScript (Fastify, Zod, `pg`) · PostgreSQL 16 · React 19 + Vite ([Rad UI](https://rad-ui.com) components, TanStack Query, dnd-kit) · an outbox worker · Docker Compose.
 
 **Stretch goals attempted (two):** an activity feed fed asynchronously through the outbox worker, and filtering the list view by a custom-field value.
 

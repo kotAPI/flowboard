@@ -1,9 +1,14 @@
+import Button from "@radui/ui/Button";
+import Table from "@radui/ui/Table";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../api";
 import { keys } from "../hooks";
 import type { Board, Page, Task } from "../types";
 import { Avatars, FieldValue, formatDate, isOverdue, PriorityBadge, StatusPill } from "./bits";
+import { Picker } from "./ui";
+
+const ANY = "__any";
 
 type Sort = "position" | "dueDate" | "priority";
 
@@ -45,55 +50,49 @@ export function TableView({ board, onOpen }: { board: Board; onOpen: (id: string
   return (
     <div className="table-wrap">
       <div className="toolbar">
-        <label>
-          Filter
-          <select aria-label="Filter field" value={filterKey} onChange={(e) => { setFilterKey(e.target.value); setFilterValue(""); }}>
-            <option value="">No filter</option>
-            {filterable.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}
-          </select>
-        </label>
+        <span className="muted">Filter</span>
+        <Picker label="Filter field" value={filterKey || ANY} onChange={(v) => { setFilterKey(v === ANY ? "" : v); setFilterValue(""); }}
+          options={[{ value: ANY, label: "No filter" }, ...filterable.map((f) => ({ value: f.key, label: f.name }))]} />
         {filterField && (
-          <select aria-label="Filter value" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-            <option value="">Any</option>
-            {filterField.type === "checkbox"
-              ? [<option key="t" value="true">Checked</option>, <option key="f" value="false">Unchecked</option>]
-              : filterField.options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          <Picker key={filterField.key} label="Filter value" value={filterValue || ANY} onChange={(v) => setFilterValue(v === ANY ? "" : v)}
+            options={[{ value: ANY, label: "Any" }, ...(filterField.type === "checkbox"
+              ? [{ value: "true", label: "Checked" }, { value: "false", label: "Unchecked" }]
+              : filterField.options.map((o) => ({ value: o.id, label: o.label, swatch: o.color ?? undefined })))]} />
         )}
         <span className="spacer" />
-        {sort !== "position" && <button className="btn ghost" onClick={() => { setSort("position"); setOrder("asc"); }}>Reset sort</button>}
+        {sort !== "position" && <Button variant="ghost" size="small" onClick={() => { setSort("position"); setOrder("asc"); }}>Reset sort</Button>}
       </div>
-      <table className="tasks">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Assignees</th>
-            <th><button className="th-sort" onClick={() => sortBy("priority")}>Priority{arrow("priority")}</button></th>
-            <th><button className="th-sort" onClick={() => sortBy("dueDate")}>Due{arrow("dueDate")}</button></th>
-            {board.fields.map((f) => <th key={f.key}>{f.name}</th>)}
-          </tr>
-        </thead>
-        <tbody>
+      <Table.Root className="tasks">
+        <Table.Head>
+          <Table.Row>
+            <Table.ColumnCellHeader>Title</Table.ColumnCellHeader>
+            <Table.ColumnCellHeader>Status</Table.ColumnCellHeader>
+            <Table.ColumnCellHeader>Assignees</Table.ColumnCellHeader>
+            <Table.ColumnCellHeader><button className="th-sort" onClick={() => sortBy("priority")}>Priority{arrow("priority")}</button></Table.ColumnCellHeader>
+            <Table.ColumnCellHeader><button className="th-sort" onClick={() => sortBy("dueDate")}>Due{arrow("dueDate")}</button></Table.ColumnCellHeader>
+            {board.fields.map((f) => <Table.ColumnCellHeader key={f.key}>{f.name}</Table.ColumnCellHeader>)}
+          </Table.Row>
+        </Table.Head>
+        <Table.Body>
           {rows.map((t) => (
-            <tr key={t.id} onClick={() => onOpen(t.id)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onOpen(t.id)}>
-              <td className="title-cell">{t.title}</td>
-              <td><StatusPill status={board.statuses.find((s) => s.key === t.statusKey)} /></td>
-              <td><Avatars ids={t.assigneeIds} /></td>
-              <td><PriorityBadge priority={t.priority} /></td>
-              <td className={isOverdue(t.dueDate) ? "overdue" : ""}>{formatDate(t.dueDate)}</td>
-              {board.fields.map((f) => <td key={f.key}><FieldValue field={f} value={t.customFields[f.key]} /></td>)}
-            </tr>
+            <Table.Row key={t.id} onClick={() => onOpen(t.id)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onOpen(t.id)}>
+              <Table.Cell className="title-cell">{t.title}</Table.Cell>
+              <Table.Cell><StatusPill status={board.statuses.find((s) => s.key === t.statusKey)} /></Table.Cell>
+              <Table.Cell><Avatars ids={t.assigneeIds} /></Table.Cell>
+              <Table.Cell><PriorityBadge priority={t.priority} /></Table.Cell>
+              <Table.Cell className={isOverdue(t.dueDate) ? "overdue" : ""}>{formatDate(t.dueDate)}</Table.Cell>
+              {board.fields.map((f) => <Table.Cell key={f.key}><FieldValue field={f} value={t.customFields[f.key]} /></Table.Cell>)}
+            </Table.Row>
           ))}
           {!query.isLoading && rows.length === 0 && (
-            <tr><td colSpan={5 + board.fields.length} className="muted center">No tasks match.</td></tr>
+            <Table.Row><Table.Cell colSpan={5 + board.fields.length} className="muted center">No tasks match.</Table.Cell></Table.Row>
           )}
-        </tbody>
-      </table>
+        </Table.Body>
+      </Table.Root>
       {query.hasNextPage && (
-        <button className="btn ghost load-more" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+        <Button variant="soft" className="load-more" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
           {query.isFetchingNextPage ? "Loading…" : "Load more"}
-        </button>
+        </Button>
       )}
     </div>
   );

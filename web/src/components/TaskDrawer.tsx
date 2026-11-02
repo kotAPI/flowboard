@@ -1,9 +1,15 @@
+import Button from "@radui/ui/Button";
+import Callout from "@radui/ui/Callout";
+import Drawer from "@radui/ui/Drawer";
+import TextArea from "@radui/ui/TextArea";
+import TextField from "@radui/ui/TextField";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiError, del, get, patch, post } from "../api";
 import { keys, useUsers } from "../hooks";
 import { PRIORITIES, type Activity, type Board, type Priority, type Task } from "../types";
 import { FieldInput } from "./FieldInput";
+import { Check, Picker } from "./ui";
 
 interface Draft {
   title: string;
@@ -51,12 +57,6 @@ export function TaskDrawer({ listId, board, taskId, initialStatus, onClose }: {
   useEffect(() => {
     if (task.data && !draft) setDraft(toDraft(task.data));
   }, [task.data, draft]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: keys.board(listId) });
@@ -110,58 +110,57 @@ export function TaskDrawer({ listId, board, taskId, initialStatus, onClose }: {
   const fieldError = (path: string) => error?.detailFor(path);
 
   return (
-    <div className="drawer-backdrop" onClick={onClose}>
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label={taskId ? "Task details" : "New task"} onClick={(e) => e.stopPropagation()}>
+    <Drawer.Root open swipeDirection="right" onOpenChange={(open) => !open && onClose()}>
+      <Drawer.Portal>
+        <Drawer.Overlay />
+        <Drawer.Content className="drawer">
         <header className="drawer-head">
-          <h2>{taskId ? "Task" : "New task"}</h2>
+          <Drawer.Title className="drawer-title">{taskId ? "Task details" : "New task"}</Drawer.Title>
           <span className="muted small">{board.list.name}</span>
           <span className="spacer" />
-          <button className="icon-btn" aria-label="Close" onClick={onClose}>✕</button>
+          <Button variant="ghost" size="small" className="icon-btn" aria-label="Close" onClick={onClose}>✕</Button>
         </header>
-        {task.error && <p className="error" role="alert">{(task.error as Error).message}</p>}
+        {task.error && <Callout.Root color="red" role="alert" className="drawer-callout"><Callout.Text>{(task.error as Error).message}</Callout.Text></Callout.Root>}
         {!draft ? (
           <p className="muted">Loading…</p>
         ) : (
           <form className="drawer-body" onSubmit={(e) => { e.preventDefault(); save.mutate(draft); }}>
             <div className={`form-row ${fieldError("title") ? "has-error" : ""}`}>
               <label htmlFor="title">Title</label>
-              <input id="title" value={draft.title} maxLength={500} required onChange={(e) => set("title", e.target.value)} />
+              <TextField id="title" value={draft.title} maxLength={500} required onChange={(e: React.ChangeEvent<HTMLInputElement>) => set("title", e.target.value)} />
               {fieldError("title") && <span className="field-error">{fieldError("title")}</span>}
             </div>
             <div className="grid2">
               <div className={`form-row ${fieldError("statusKey") ? "has-error" : ""}`}>
                 <label htmlFor="status">Status</label>
-                <select id="status" value={draft.statusKey} onChange={(e) => set("statusKey", e.target.value)}>
-                  {board.statuses.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
-                </select>
+                <Picker id="status" label="Status" value={draft.statusKey} onChange={(v) => set("statusKey", v)}
+                  options={board.statuses.map((st) => ({ value: st.key, label: st.name, swatch: st.color }))} />
                 {fieldError("statusKey") && <span className="field-error">{fieldError("statusKey")}</span>}
               </div>
               <div className="form-row">
                 <label htmlFor="priority">Priority</label>
-                <select id="priority" value={draft.priority} onChange={(e) => set("priority", e.target.value as Priority)}>
-                  {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <Picker id="priority" label="Priority" value={draft.priority} onChange={(v) => set("priority", v as Priority)}
+                  options={PRIORITIES.map((p) => ({ value: p, label: p[0]!.toUpperCase() + p.slice(1) }))} />
               </div>
               <div className="form-row">
                 <label htmlFor="due">Due date</label>
-                <input id="due" type="date" value={draft.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
+                <TextField id="due" type="date" value={draft.dueDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => set("dueDate", e.target.value)} />
               </div>
               <div className="form-row">
                 <span className="label">Assignees</span>
                 <div className="multi" role="group" aria-label="Assignees">
                   {users.data?.map((u) => (
-                    <label key={u.id} className="multi-opt">
-                      <input type="checkbox" checked={draft.assigneeIds.includes(u.id)}
-                        onChange={(e) => set("assigneeIds", e.target.checked ? [...draft.assigneeIds, u.id] : draft.assigneeIds.filter((x) => x !== u.id))} />
+                    <Check key={u.id} checked={draft.assigneeIds.includes(u.id)}
+                      onChange={(on) => set("assigneeIds", on ? [...draft.assigneeIds, u.id] : draft.assigneeIds.filter((x) => x !== u.id))}>
                       {u.name}
-                    </label>
+                    </Check>
                   ))}
                 </div>
               </div>
             </div>
             <div className="form-row">
               <label htmlFor="desc">Description</label>
-              <textarea id="desc" rows={3} value={draft.description} onChange={(e) => set("description", e.target.value)} />
+              <TextArea id="desc" rows={3} value={draft.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => set("description", e.target.value)} />
             </div>
             {board.fields.length > 0 && (
               <fieldset className="custom-fields">
@@ -173,18 +172,20 @@ export function TaskDrawer({ listId, board, taskId, initialStatus, onClose }: {
               </fieldset>
             )}
             {error && (
-              <div className="error" role="alert">
-                <strong>{error.body.code === "VERSION_CONFLICT" ? "Someone else edited this task." : error.message}</strong>
-                {error.body.code === "VERSION_CONFLICT" && (
-                  <button type="button" className="btn ghost" onClick={async () => { const t = await task.refetch(); if (t.data) setDraft(toDraft(t.data)); setError(null); }}>Load latest</button>
-                )}
-              </div>
+              <Callout.Root color="red" role="alert">
+                <Callout.Text>
+                  <strong>{error.body.code === "VERSION_CONFLICT" ? "Someone else edited this task." : error.message}</strong>{" "}
+                  {error.body.code === "VERSION_CONFLICT" && (
+                    <Button type="button" variant="soft" size="small" onClick={async () => { const t = await task.refetch(); if (t.data) setDraft(toDraft(t.data)); setError(null); }}>Load latest</Button>
+                  )}
+                </Callout.Text>
+              </Callout.Root>
             )}
             <div className="drawer-actions">
-              {taskId && <button type="button" className="btn danger ghost" onClick={() => remove.mutate()}>Delete</button>}
+              {taskId && <Button type="button" variant="ghost" color="red" onClick={() => remove.mutate()}>Delete</Button>}
               <span className="spacer" />
               {saved && <span className="saved" role="status">Saved</span>}
-              <button type="submit" className="btn primary" disabled={save.isPending}>{save.isPending ? "Saving…" : taskId ? "Save" : "Create task"}</button>
+              <Button type="submit" disabled={save.isPending}>{save.isPending ? "Saving…" : taskId ? "Save" : "Create task"}</Button>
             </div>
           </form>
         )}
@@ -198,7 +199,8 @@ export function TaskDrawer({ listId, board, taskId, initialStatus, onClose }: {
             )}
           </section>
         )}
-      </aside>
-    </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }

@@ -1,9 +1,13 @@
+import Avatar from "@radui/ui/Avatar";
+import Badge from "@radui/ui/Badge";
 import { initials, useUsers } from "../hooks";
 import type { Priority, ResolvedField, ResolvedStatus } from "../types";
 
+const PRIORITY_COLOR: Record<Exclude<Priority, "none">, string> = { urgent: "red", high: "orange", normal: "blue", low: "gray" };
+
 export function PriorityBadge({ priority }: { priority: Priority }) {
   if (priority === "none") return null;
-  return <span className={`badge prio-${priority}`}>{priority}</span>;
+  return <Badge variant="soft" size="small" color={PRIORITY_COLOR[priority]} className="prio">{priority}</Badge>;
 }
 
 export function Avatars({ ids }: { ids: string[] }) {
@@ -12,7 +16,11 @@ export function Avatars({ ids }: { ids: string[] }) {
     <span className="avatars">
       {ids.map((id) => {
         const name = users.data?.find((u) => u.id === id)?.name ?? id.replace("usr_", "");
-        return <span key={id} className="avatar" title={name}>{initials(name)}</span>;
+        return (
+          <Avatar.Root key={id} size="small" className="avatar-sm" title={name}>
+            <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
+          </Avatar.Root>
+        );
       })}
     </span>
   );

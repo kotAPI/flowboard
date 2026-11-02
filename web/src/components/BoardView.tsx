@@ -11,6 +11,9 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import Button from "@radui/ui/Button";
+import Callout from "@radui/ui/Callout";
+import RadCard from "@radui/ui/Card";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -115,8 +118,16 @@ export function BoardView({ board, onOpen, onAdd }: { board: Board; onOpen: (id:
 
   return (
     <>
-      {error && <div className="toast error" role="alert" onClick={() => setError(null)}>{error}</div>}
-      {board.truncated && <div className="toast">This list has more tasks than the board shows; use the List view to page through all of them.</div>}
+      {error && (
+        <Callout.Root color="red" role="alert" className="board-callout" onClick={() => setError(null)}>
+          <Callout.Text>{error}</Callout.Text>
+        </Callout.Root>
+      )}
+      {board.truncated && (
+        <Callout.Root color="gray" className="board-callout">
+          <Callout.Text>This list has more tasks than the board shows; use the List view to page through all of them.</Callout.Text>
+        </Callout.Root>
+      )}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
         <div className="board">
           {board.statuses.map((s) => (
@@ -144,7 +155,7 @@ function Column({ id, title, color, count, onAdd, children }: { id: string; titl
         <span className="dot" style={{ background: color }} />
         <h2>{title}</h2>
         <span className="count">{count}</span>
-        <button className="icon-btn" aria-label={`Add task to ${title}`} onClick={onAdd}>+</button>
+        <Button variant="ghost" size="small" className="icon-btn" aria-label={`Add task to ${title}`} onClick={onAdd}>+</Button>
       </header>
       <div ref={setNodeRef} className="column-body">{children}</div>
     </section>
@@ -162,7 +173,7 @@ function SortableCard({ task, chip, onOpen }: { task: Task; chip?: React.ReactNo
 
 function Card({ task, chip, onOpen, dragging }: { task: Task; chip?: React.ReactNode; onOpen?: (id: string) => void; dragging?: boolean }) {
   return (
-    <article className={`card ${dragging ? "dragging" : ""}`} onClick={() => onOpen?.(task.id)} onKeyDown={(e) => e.key === "Enter" && onOpen?.(task.id)}>
+    <RadCard.Root className={`card ${dragging ? "dragging" : ""}`} onClick={() => onOpen?.(task.id)} onKeyDown={(e) => e.key === "Enter" && onOpen?.(task.id)}>
       <div className="card-title">{task.title}</div>
       <div className="card-meta">
         <PriorityBadge priority={task.priority} />
@@ -171,6 +182,6 @@ function Card({ task, chip, onOpen, dragging }: { task: Task; chip?: React.React
         <span className="spacer" />
         <Avatars ids={task.assigneeIds} />
       </div>
-    </article>
+    </RadCard.Root>
   );
 }

@@ -119,7 +119,9 @@ describe("Flowboard UI", () => {
     const user = userEvent.setup();
     renderApp();
     expect(await screen.findByRole("link", { name: "Incident Review" })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("Acting user"), "bob");
+    // the user switcher is a Rad UI Select (combobox + listbox), not a native <select>
+    await user.click(screen.getByRole("combobox", { name: "Acting user" }));
+    await user.click(await screen.findByRole("option", { name: /Bob/ }));
     await waitFor(() => expect(screen.queryByRole("link", { name: "Incident Review" })).not.toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Backlog" })).toBeInTheDocument();
     expect(calls.filter((c) => c.url === "/v1/tree").map((c) => c.user)).toContain("bob");
