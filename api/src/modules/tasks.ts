@@ -218,7 +218,7 @@ export async function updateTask(db: Db, actor: User, id: string, input: UpdateT
       ],
     );
     const updated = rows[0] as Task;
-    const changed = Object.keys(input).filter((k) => k !== "version");
+    const changed = diffTask(task, updated);
     await emit(c, statusKey !== task.statusKey ? "task.status_changed" : "task.updated", id, {
       actor: { id: actor.id, name: actor.name },
       task: eventView(updated, statuses),
@@ -227,6 +227,19 @@ export async function updateTask(db: Db, actor: User, id: string, input: UpdateT
     });
     return updated;
   });
+}
+
+/** Which fields actually changed (so the feed and webhooks don't report no-op writes). */
+function diffTask(before: Task, after: Task): string[] {
+  const out: string[] = [];
+  for (const k of ["title", "description", "statusKey", "priority", "dueDate"] as const) {
+    if (before[k] !== after[k]) out.push(k);
+  }
+  if (JSON.stringify(before.assigneeIds) !== JSON.stringify(after.assigneeIds)) out.push("assigneeIds");
+  for (const k of new Set([...Object.keys(before.customFields), ...Object.keys(after.customFields)])) {
+    if (JSON.stringify(before.customFields[k]) !== JSON.stringify(after.customFields[k])) out.push(`customFields.${k}`);
+  }
+  return out;
 }
 
 export interface MoveTaskInput {

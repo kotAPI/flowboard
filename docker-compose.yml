@@ -1,0 +1,79 @@
+name: flowboard
+
+x-api-env: &api-env
+  DATABASE_URL: postgres://${POSTGRES_USER:-flowboard}:${POSTGRES_PASSWORD:-flowboard}@db:5432/${POSTGRES_DB:-flowboard}
+  JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
+  ALLOW_DEV_HEADER_AUTH: ${ALLOW_DEV_HEADER_AUTH:-true}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowboard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowboard}
+      POSTGRES_DB: ${POSTGRES_DB:-flowboard}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/db-init.sql:/docker-entrypoint-initdb.d/001-test-db.sql:ro
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Stateless API. Migrates + seeds (only if empty) on boot; scale with `docker compose up --scale api=3`
+  # behind a real load balancer (the nginx upstream here points at the service name).
+  api:
+    build: ./api
+    environment:
+      <<: *api-env
+      PORT: 3000
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
+    depends_on:
+      db: { condition: service_healthy }
+    ports:
+      - "${API_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # Drains the transactional outbox: builds the activity feed, logs webhook payloads.
+  worker:
+    build: ./api
+    command: ["npx", "tsx", "src/worker.ts"]
+    environment:
+      <<: *api-env
+      WEBHOOK_LOG: ${WEBHOOK_LOG:-true}
+    depends_on:
+      api: { condition: service_healthy }
+
+  web:
+    build: ./web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api: { condition: service_healthy }
+
+  # --- `make test` / `docker compose --profile test run --rm api-test` ---
+  api-test:
+    profiles: [test]
+    build: ./api
+    command: ["npx", "vitest", "run"]
+    environment:
+      TEST_DATABASE_URL: postgres://${POSTGRES_USER:-flowboard}:${POSTGRES_PASSWORD:-flowboard}@db:5432/flowboard_test
+    volumes:
+      - ./README.md:/README.md:ro
+    depends_on:
+      db: { condition: service_healthy }
+
+  web-test:
+    profiles: [test]
+    build: { context: ./web, target: source }
+    command: ["npx", "vitest", "run"]
+
+volumes:
+  db-data:

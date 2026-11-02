@@ -22,7 +22,8 @@ export function summarise(event: Pick<DomainEvent<TaskEventPayload>, "type" | "p
     case "task.moved":
       return `${who} moved ${what} to another list${statusMapped ? ` (status mapped to ${task?.statusName})` : ""}`;
     case "task.updated":
-      return `${who} updated ${changes?.length ? changes.join(", ") : "details"} on ${what}`;
+      if (!changes?.length) return null; // no-op save
+      return `${who} updated ${changes.map((c) => c.replace(/^customFields\./, "").replace(/([A-Z])/g, " $1").toLowerCase()).join(", ")} on ${what}`;
     case "task.reordered":
       return null; // too noisy for a feed
     case "task.deleted":
