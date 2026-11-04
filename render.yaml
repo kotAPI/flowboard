@@ -1,0 +1,26 @@
+# Hosted demo on Render (free plan). Local development uses docker-compose.yml.
+services:
+  - type: web
+    name: flowboard
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: flowboard-db, property: connectionString }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOW_DEV_HEADER_AUTH
+        value: "true"
+      - key: SEED_ON_BOOT
+        value: "true"
+      - key: WEBHOOK_LOG
+        value: "true"
+
+databases:
+  - name: flowboard-db
+    plan: free
+    databaseName: flowboard
+    user: flowboard
